@@ -18,8 +18,15 @@
   height: 100vh;
   text-align: center;
   overflow: hidden;
+  cursor: pointer;
 }
-
+canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+    
 .container {
   max-width: 500px;
   padding: 20px;
@@ -168,6 +175,122 @@
 </head>
 
 <body>
+
+  <canvas id="confettii"></canvas>
+  <script>
+(() => {
+  const canvas = document.getElementById('confettii');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  class ConfettiParticle {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.size = Math.random() * 8 + 4;
+      this.color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`;
+      this.speedX = (Math.random() - 0.5) * 6;
+      this.speedY = Math.random() * -7 - 3;
+      this.gravity = 0.3;
+      this.rotation = Math.random() * 360;
+      this.rotationSpeed = (Math.random() - 0.5) * 10;
+      this.life = 100;
+      this.opacity = 1;
+    }
+
+    update() {
+      this.speedY += this.gravity;
+      this.x += this.speedX;
+      this.y += this.speedY;
+      this.rotation += this.rotationSpeed;
+      this.life--;
+      this.opacity = this.life / 100;
+    }
+
+    draw(ctx) {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rotation * Math.PI / 180);
+      ctx.fillStyle = `rgba(${hexToRgb(this.color)},${this.opacity})`;
+      ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+      ctx.restore();
+    }
+
+    isDead() {
+      return this.life <= 0 || this.y > H;
+    }
+  }
+
+  function hexToRgb(hsl) {
+    const hslRegex = /hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/;
+    const result = hslRegex.exec(hsl);
+    if (!result) return '255,255,255';
+    let h = +result[1] / 360;
+    let s = +result[2] / 100;
+    let l = +result[3] / 100;
+
+    let r, g, b;
+
+    if(s === 0){
+        r = g = b = l;
+    }else{
+        const hue2rgb = (p, q, t) => {
+          if(t < 0) t += 1;
+          if(t > 1) t -= 1;
+          if(t < 1/6) return p + (q - p) * 6 * t;
+          if(t < 1/2) return q;
+          if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    return `${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)}`;
+  }
+
+  let confettiParticles = [];
+
+  function createConfetti(x, y) {
+    const count = 20;
+    for (let i = 0; i < count; i++) {
+      confettiParticles.push(new ConfettiParticle(x, y));
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    confettiParticles = confettiParticles.filter(p => !p.isDead());
+    confettiParticles.forEach(p => {
+      p.update();
+      p.draw(ctx);
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  window.addEventListener('click', e => {
+    createConfetti(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('touchstart', e => {
+    const touch = e.touches[0];
+    createConfetti(touch.clientX, touch.clientY);
+  });
+})();
+</script>
+  
   <script>
     function confettiBurst() {
       confetti({
